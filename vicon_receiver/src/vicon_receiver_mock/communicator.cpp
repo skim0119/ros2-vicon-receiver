@@ -14,6 +14,11 @@ bool Communicator::connect() {
   cout << msg << endl;
   msg = "Connection successfully established with vicon-mock";
   cout << msg << endl;
+
+  data.load();
+
+  frame_number = 0UL;
+
   msg = "Initialization complete";
   cout << msg << endl;
 
@@ -31,7 +36,7 @@ bool Communicator::disconnect() {
 
 void Communicator::get_frame() {
 
-  unsigned int subject_count = 5UL;
+  unsigned int subject_count = 1UL;
 
   map<string, Publisher>::iterator pub_it;
 
@@ -41,25 +46,21 @@ void Communicator::get_frame() {
     string subject_name = "TestSubject_" + std::to_string(subject_index);
 
     // count the number of segments
-    unsigned int segment_count = 3UL;
+    unsigned int segment_count = 6UL;
 
     for (unsigned int segment_index = 0; segment_index < segment_count;
          ++segment_index) {
       // get the segment name
-      string segment_name = "TestSegment_" + std::to_string(subject_index) + "_" + std::to_string(segment_index);
+      string segment_name = "CrossSection_" + std::to_string(subject_index) +
+                            "_" + std::to_string(segment_index);
 
       // get position of segment
       PositionStruct current_position;
-
-      for (size_t i = 0; i < 4; i++) {
-        if (i < 3)
-          current_position.translation[i] = 0.0;
-        current_position.rotation[i] = 10.0;
-      }
+      data.fetch_data(frame_number, current_position);
       current_position.segment_name = segment_name;
       current_position.subject_name = subject_name;
       current_position.translation_type = "Global";
-      current_position.frame_number = 0UL;
+      current_position.frame_number = frame_number;
 
       // send position to publisher
       boost::mutex::scoped_try_lock lock(mutex);
@@ -80,6 +81,11 @@ void Communicator::get_frame() {
         }
       }
     }
+  }
+
+  frame_number++;
+  if (frame_number == 422) {
+    frame_number = 0;
   }
 }
 

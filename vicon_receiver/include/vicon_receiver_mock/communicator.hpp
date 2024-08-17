@@ -2,6 +2,7 @@
 #define COMMUNICATOR_HPP
 
 #include "publisher.hpp"
+#include "data.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include <boost/thread.hpp>
 #include <chrono>
@@ -20,6 +21,7 @@ private:
   string ns_name;
   map<string, Publisher> pub_map;
   boost::mutex mutex;
+  DataImport data;
 
 public:
   Communicator();
@@ -32,6 +34,7 @@ public:
 
   // Main loop that request frames from the currently connected DataStream
   // server and send the received segment data to the Publisher class.
+  std::size_t frame_number;
   void get_frame();
 
   // functions to create a segment publisher in a new thread
