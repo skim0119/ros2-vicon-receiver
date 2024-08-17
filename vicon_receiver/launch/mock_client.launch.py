@@ -10,7 +10,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             Node(
-                package="vicon_receiver",
+                package="vicon_receiver_mock",
                 executable="vicon_client",
                 output="screen",
                 parameters=[{"buffer_size": buffer_size, "namespace": topic_namespace}],

@@ -32,7 +32,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
 ament_export_dependencies(rosidl_default_runtime)
 
-add_executable(vicon_client src/vicon_receiver/communicator.cpp src/vicon_receiver/publisher.cpp)
+add_executable(vicon_client src/vicon_receiver/communicator.cpp src/vicon_receiver/publisher.cpp, src/vicon_receiver_mock/communicator.cpp src/vicon_receiver_mock/publisher.cpp)
 target_link_libraries(vicon_client ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
 ament_target_dependencies(vicon_client "rclcpp")
 
