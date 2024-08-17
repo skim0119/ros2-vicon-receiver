@@ -1,6 +1,6 @@
 #pragma once
-#include <array>
 #include "publisher.hpp"
+#include <array>
 
 class DataImport {
 private:
@@ -12,5 +12,5 @@ public:
 
   void load();
 
-  void fetch_data(std::size_t, PositionStruct&);
-}
+  void fetch_data(unsigned int, PositionStruct &);
+};

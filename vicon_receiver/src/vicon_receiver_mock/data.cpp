@@ -1,7 +1,7 @@
 #include "vicon_receiver_mock/data.hpp"
 #include "vicon_receiver_mock/publisher.hpp"
 
-void DataImport::fetch_data(std::size_t frame_number,
+void DataImport::fetch_data(unsigned int frame_number,
                             PositionStruct &current_position) {
   current_position.translation[0] = positions[frame_number][0][0];
   current_position.translation[1] = positions[frame_number][0][1];
