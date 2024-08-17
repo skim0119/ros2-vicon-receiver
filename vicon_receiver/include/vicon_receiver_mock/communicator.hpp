@@ -1,7 +1,6 @@
 #if !defined(COMMUNICATOR_HPP)
 #define COMMUNICATOR_HPP
 
-#include "DataStreamClient.h"
 #include "publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include <boost/thread.hpp>

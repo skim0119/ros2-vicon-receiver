@@ -1,7 +1,5 @@
 #include "vicon_receiver_mock/communicator.hpp"
 
-using namespace ViconDataStreamSDK::CPP;
-
 Communicator::Communicator() : Node("vicon") {
   // get parameters
   this->declare_parameter<int>("buffer_size", 200);
@@ -32,45 +30,36 @@ bool Communicator::disconnect() {
 }
 
 void Communicator::get_frame() {
-  Output_GetFrameNumber frame_number = vicon_client.GetFrameNumber();
 
-  unsigned int subject_count = vicon_client.GetSubjectCount().SubjectCount;
+  unsigned int subject_count = 5UL;
 
   map<string, Publisher>::iterator pub_it;
 
   for (unsigned int subject_index = 0; subject_index < subject_count;
        ++subject_index) {
     // get the subject name
-    string subject_name =
-        vicon_client.GetSubjectName(subject_index).SubjectName;
+    string subject_name = "TestSubject_" + std::to_string(subject_index);
 
     // count the number of segments
-    unsigned int segment_count =
-        vicon_client.GetSegmentCount(subject_name).SegmentCount;
+    unsigned int segment_count = 3UL;
 
     for (unsigned int segment_index = 0; segment_index < segment_count;
          ++segment_index) {
       // get the segment name
-      string segment_name =
-          vicon_client.GetSegmentName(subject_name, segment_index).SegmentName;
+      string segment_name = "TestSegment_" + std::to_string(subject_index) + "_" + std::to_string(segment_index);
 
       // get position of segment
       PositionStruct current_position;
-      Output_GetSegmentGlobalTranslation trans =
-          vicon_client.GetSegmentGlobalTranslation(subject_name, segment_name);
-      Output_GetSegmentGlobalRotationQuaternion rot =
-          vicon_client.GetSegmentGlobalRotationQuaternion(subject_name,
-                                                          segment_name);
 
       for (size_t i = 0; i < 4; i++) {
         if (i < 3)
-          current_position.translation[i] = trans.Translation[i];
-        current_position.rotation[i] = rot.Rotation[i];
+          current_position.translation[i] = 0.0;
+        current_position.rotation[i] = 10.0;
       }
       current_position.segment_name = segment_name;
       current_position.subject_name = subject_name;
       current_position.translation_type = "Global";
-      current_position.frame_number = frame_number.FrameNumber;
+      current_position.frame_number = 0UL;
 
       // send position to publisher
       boost::mutex::scoped_try_lock lock(mutex);
