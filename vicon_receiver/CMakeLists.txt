@@ -36,6 +36,10 @@ add_executable(vicon_client src/vicon_receiver/communicator.cpp src/vicon_receiv
 target_link_libraries(vicon_client ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
 ament_target_dependencies(vicon_client "rclcpp")
 
+add_executable(vicon_client_mock src/vicon_receiver_mock/communicator.cpp src/vicon_receiver_mock/publisher.cpp)
+target_link_libraries(vicon_client_mock ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
+ament_target_dependencies(vicon_client_mock "rclcpp")
+
 get_default_rmw_implementation(rmw_implementation)
 find_package("${rmw_implementation}" REQUIRED)
 get_rmw_typesupport(typesupport_impls "${rmw_implementation}" LANGUAGE "cpp")
@@ -44,9 +48,12 @@ foreach(typesupport_impl ${typesupport_impls})
   rosidl_target_interfaces(vicon_client
     ${PROJECT_NAME} "rosidl_typesupport_cpp"
   )
+  rosidl_target_interfaces(vicon_client_mock
+    ${PROJECT_NAME} "rosidl_typesupport_cpp"
+  )
 endforeach()
 
-install(TARGETS vicon_client DESTINATION lib/${PROJECT_NAME})
+install(TARGETS vicon_client vicon_client_mock DESTINATION lib/${PROJECT_NAME})
 
 # Install launch file
 install(DIRECTORY
