@@ -16,7 +16,6 @@ bool Communicator::connect() {
   cout << msg << endl;
 
   data.load();
-
   frame_number = 0UL;
 
   msg = "Initialization complete";
@@ -56,7 +55,7 @@ void Communicator::get_frame() {
 
       // get position of segment
       PositionStruct current_position;
-      data.fetch_data(frame_number, current_position);
+      data.fetch_data(frame_number, segment_index, current_position);
       current_position.segment_name = segment_name;
       current_position.subject_name = subject_name;
       current_position.translation_type = "Global";
@@ -81,11 +80,6 @@ void Communicator::get_frame() {
         }
       }
     }
-  }
-
-  frame_number++;
-  if (frame_number == 422) {
-    frame_number = 0;
   }
 }
 

@@ -36,7 +36,7 @@ add_executable(vicon_client src/vicon_receiver/communicator.cpp src/vicon_receiv
 target_link_libraries(vicon_client ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
 ament_target_dependencies(vicon_client "rclcpp")
 
-add_executable(vicon_client_mock src/vicon_receiver_mock/communicator.cpp src/vicon_receiver_mock/publisher.cpp)
+add_executable(vicon_client_mock src/vicon_receiver_mock/communicator.cpp src/vicon_receiver_mock/publisher.cpp src/vicon_receiver_mock/data.cpp)
 target_link_libraries(vicon_client_mock ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
 ament_target_dependencies(vicon_client_mock "rclcpp")
 
