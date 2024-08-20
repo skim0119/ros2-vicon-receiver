@@ -42,7 +42,7 @@ void Communicator::get_frame() {
   for (unsigned int subject_index = 0; subject_index < subject_count;
        ++subject_index) {
     // get the subject name
-    string subject_name = "TestSubject_" + std::to_string(subject_index);
+    // string subject_name = "TestSubject_" + std::to_string(subject_index);
 
     // count the number of segments
     unsigned int segment_count = 6UL;
@@ -52,6 +52,8 @@ void Communicator::get_frame() {
       // get the segment name
       string segment_name = "CrossSection_" + std::to_string(subject_index) +
                             "_" + std::to_string(segment_index);
+      // TODO: Temporary naming. match subject_name to segment_name
+      string subject_name = segment_name;
 
       // get position of segment
       PositionStruct current_position;
