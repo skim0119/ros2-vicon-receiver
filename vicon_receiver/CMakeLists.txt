@@ -27,16 +27,34 @@ find_package(rclcpp REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Position.msg"
+  "msg/Posture.msg"
+  "msg/MarkersList.msg"
 )
 
 ament_export_dependencies(rosidl_default_runtime)
 
-add_executable(vicon_client src/vicon_receiver/communicator.cpp src/vicon_receiver/publisher.cpp)
+add_executable(
+  vicon_client
+  src/vicon_receiver/communicator.cpp
+  src/vicon_receiver/publisher.cpp
+)
 target_link_libraries(vicon_client ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
 ament_target_dependencies(vicon_client "rclcpp")
 
-add_executable(vicon_client_mock src/vicon_receiver_mock/communicator.cpp src/vicon_receiver_mock/publisher.cpp src/vicon_receiver_mock/data.cpp)
+add_executable(
+  vicon_client_unlabeled
+  src/vicon_unlabeled_marker_receiver/communicator.cpp
+  src/vicon_unlabeled_marker_receiver/publisher.cpp
+)
+target_link_libraries(vicon_client_unlabeled ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
+ament_target_dependencies(vicon_client_unlabeled "rclcpp")
+
+add_executable(
+  vicon_client_mock
+  src/vicon_receiver_mock/communicator.cpp
+  src/vicon_receiver_mock/publisher.cpp 
+  src/vicon_receiver_mock/data.cpp
+)
 target_link_libraries(vicon_client_mock ViconDataStreamSDK_CPP ${Boost_LIBRARIES})
 ament_target_dependencies(vicon_client_mock "rclcpp")
 
@@ -51,9 +69,12 @@ foreach(typesupport_impl ${typesupport_impls})
   rosidl_target_interfaces(vicon_client_mock
     ${PROJECT_NAME} "rosidl_typesupport_cpp"
   )
+  rosidl_target_interfaces(vicon_client_unlabeled
+    ${PROJECT_NAME} "rosidl_typesupport_cpp"
+  )
 endforeach()
 
-install(TARGETS vicon_client vicon_client_mock DESTINATION lib/${PROJECT_NAME})
+install(TARGETS vicon_client vicon_client_mock vicon_client_unlabeled DESTINATION lib/${PROJECT_NAME})
 
 # Install launch file
 install(DIRECTORY

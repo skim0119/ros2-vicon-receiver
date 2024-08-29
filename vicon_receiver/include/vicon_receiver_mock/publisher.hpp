@@ -1,7 +1,7 @@
 #ifndef PUBLISHER_HPP
 #define PUBLISHER_HPP
 #include "rclcpp/rclcpp.hpp"
-#include "vicon_receiver/msg/position.hpp"
+#include "vicon_receiver/msg/posture.hpp"
 #include "vicon_receiver/publisher.hpp"
 #include <unistd.h>
 
@@ -19,7 +19,7 @@ struct PositionStruct {
 // Class that allows segment data to be published in a ROS2 topic.
 class Publisher {
 private:
-  rclcpp::Publisher<vicon_receiver::msg::Position>::SharedPtr
+  rclcpp::Publisher<vicon_receiver::msg::Posture>::SharedPtr
       position_publisher_;
 
 public:
