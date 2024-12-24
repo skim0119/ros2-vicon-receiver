@@ -10,20 +10,30 @@ namespace UnlabeledMarker {
 // Struct used to hold segment data to transmit to the Publisher class.
 struct MarkersStruct {
   // Constructor
+  MarkersStruct() = default;
   MarkersStruct(std::size_t size, unsigned int frame_number)
-      : frame_number(frame_number) {
-    x.resize(size);
-    y.resize(size);
-    z.resize(size);
-    indices.resize(size);
+      : frame_number(frame_number), size(size) {
+  x.resize(size);
+  y.resize(size);
+  z.resize(size);
+  vx.resize(size);  
+  vy.resize(size);  
+  vz.resize(size);  
+  speed.resize(size); 
+  indices.resize(size);
   }
 
   std::vector<double> x;
   std::vector<double> y;
   std::vector<double> z;
+  std::vector<double> vx;  
+  std::vector<double> vy;  
+  std::vector<double> vz;  
+  std::vector<double> speed;  
   std::vector<int> indices;
 
   unsigned int frame_number;
+  std::size_t size;
 
 } typedef MarkersStruct;
 

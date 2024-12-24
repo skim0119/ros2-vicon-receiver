@@ -1,31 +1,46 @@
-#if !defined(COMMUNICATOR_HPP)
-#define COMMUNICATOR_HPP
+#pragma once
 
 #include "DataStreamClient.h"
 #include "rclcpp/rclcpp.hpp"
-#include "vicon_unlabeled_marker_receiver/publisher.hpp"
 #include <boost/thread.hpp>
 #include <chrono>
 #include <iostream>
 #include <map>
 #include <string>
 #include <unistd.h>
+#include <vector>
+#include <array>
+#include <deque>
+#include <cmath>
+#include <algorithm>
+#include <limits>
 
-using namespace std;
+#include "vicon_unlabeled_marker_receiver/publisher.hpp"
+#include "utility/data_structure/fixed_size_queue.hpp"
 
 namespace ViconReceiver {
 namespace UnlabeledMarker {
+
+using IndexPair = std::pair<std::size_t, std::size_t>;
+
 // Main Node class
 class Communicator : public rclcpp::Node {
 private:
   ViconDataStreamSDK::CPP::Client vicon_client;
-  string hostname;
+  std::string hostname;
   unsigned int buffer_size;
-  string ns_name;
-  map<string, Publisher> pub_map;
+  std::string ns_name;
+  std::map<std::string, Publisher> pub_map;
   boost::mutex mutex;
 
+  MarkersStruct previous_markers;
+  double previous_frame_time = 0.0;
+  std::size_t marker_count;
+
+  bool flag_initialized = false;
+
 public:
+
   Communicator();
 
   // Initialises the connection to the DataStream server
@@ -39,12 +54,21 @@ public:
   void get_frame();
 
   // functions to create a segment publisher in a new thread
-  void create_publisher(const string subject_name, const string segment_name);
-  void create_publisher_thread(const string subject_name,
-                               const string segment_name);
+  void create_publisher(const std::string subject_name, const std::string segment_name);
+  void create_publisher_thread(const std::string subject_name,
+                               const std::string segment_name);
+
+  // function that fetch the marker position into marker struct.
+  // it returns the timestamp when the marker is returned.
+  // FIXME: the process hault until a "correct" number of markers are detected. (not sure if needed)
+  auto fetch_markers(MarkersStruct&) -> double;
+
+  // find matching marker indices between two marker group.
+  std::vector<IndexPair> find_optimal_assignment(
+    const MarkersStruct& current_marker,
+    const MarkersStruct& prev_marker);
+
 };
 
 } // namespace UnlabeledMarker
 } // namespace ViconReceiver
-
-#endif // COMMUNICATOR_HPP

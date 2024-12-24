@@ -1,9 +1,13 @@
 #include "vicon_unlabeled_marker_receiver/communicator.hpp"
 
+#include "utility/math/linalg.hpp"
+#include "utility/algorithm.hpp"
+
 using namespace ViconDataStreamSDK::CPP;
 
 namespace ViconReceiver {
 namespace UnlabeledMarker {
+
 
 Communicator::Communicator() : Node("vicon_unlabeled_markers") {
   // get parameters
@@ -17,20 +21,20 @@ Communicator::Communicator() : Node("vicon_unlabeled_markers") {
 
 bool Communicator::connect() {
   // connect to server
-  string msg = "Connecting to " + hostname + " ...";
-  cout << msg << endl;
-  int counter = 0;
+  std::string msg = "Connecting to " + hostname + " ...";
+  std::cout << msg << std::endl;
+  std::size_t counter = 0;
   while (!vicon_client.IsConnected().Connected) {
     bool ok = (vicon_client.Connect(hostname).Result == Result::Success);
     if (!ok) {
       counter++;
       msg = "Connect failed, reconnecting (" + std::to_string(counter) + ")...";
-      cout << msg << endl;
+      std::cout << msg << std::endl;
       sleep(1);
     }
   }
   msg = "Connection successfully established with " + hostname;
-  cout << msg << endl;
+  std::cout << msg << std::endl;
 
   // perform further initialization
   // vicon_client.EnableSegmentData();
@@ -44,9 +48,34 @@ bool Communicator::connect() {
   vicon_client.SetBufferSize(buffer_size);
 
   msg = "Initialization complete";
-  cout << msg << endl;
+  std::cout << msg << std::endl;
 
   return true;
+}
+
+auto Communicator::fetch_markers(MarkersStruct& markers) -> double{
+  vicon_client.GetFrame();
+  std::size_t marker_count_now = vicon_client.GetUnlabeledMarkerCount().MarkerCount;
+
+  while (marker_count_now != marker_count){ // wait until the marker count is stable
+    std::cout << "Warning: Marker count mismatch: " << marker_count_now << std::endl;
+    sleep(0.1); // TODO: Probably needs to be faster??
+
+    vicon_client.GetFrame();
+    marker_count_now = vicon_client.GetUnlabeledMarkerCount().MarkerCount;
+  }
+
+  Output_GetUnlabeledMarkerGlobalTranslation unlabeled_marker_translation;
+  for (std::size_t i = 0; i < marker_count; ++i) {
+    unlabeled_marker_translation = vicon_client.GetUnlabeledMarkerGlobalTranslation(i);
+    markers.x[i] = unlabeled_marker_translation.Translation[0];
+    markers.y[i] = unlabeled_marker_translation.Translation[1];
+    markers.z[i] = unlabeled_marker_translation.Translation[2];
+    markers.indices[i] = i;
+  }
+
+  auto now = std::chrono::system_clock::now();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 }
 
 bool Communicator::disconnect() {
@@ -58,43 +87,121 @@ bool Communicator::disconnect() {
   vicon_client.DisableUnlabeledMarkerData();
   vicon_client.DisableDeviceData();
   vicon_client.DisableCentroidData();
-  string msg = "Disconnecting from " + hostname + "...";
-  cout << msg << endl;
+  std::string msg = "Disconnecting from " + hostname + "...";
+  std::cout << msg << std::endl;
   vicon_client.Disconnect();
   msg = "Successfully disconnected";
-  cout << msg << endl;
+  std::cout << msg << std::endl;
   if (!vicon_client.IsConnected().Connected)
     return true;
   return false;
 }
 
+std::vector<IndexPair> Communicator::find_optimal_assignment(
+    const MarkersStruct& current_marker,
+    const MarkersStruct& prev_marker) {
+
+    std::size_t n = current_marker.indices.size();
+    std::size_t m = prev_marker.indices.size();
+    
+    std::vector<std::vector<double>> cost_matrix(n, std::vector<double>(m));
+    std::array<double, 3> current_marker_pos, prev_marker_pos;
+
+    // Calculate the cost matrix
+    for (std::size_t i = 0; i < n; ++i) {
+        current_marker_pos = {current_marker.x[i], current_marker.y[i], current_marker.z[i]};
+        for (std::size_t j = 0; j < m; ++j) {
+            prev_marker_pos = {prev_marker.x[j], prev_marker.y[j], prev_marker.z[j]};
+            cost_matrix[i][j] = Utility::Math::calculate_distance(current_marker_pos, prev_marker_pos);
+        }
+    }
+
+    // // Apply Hungarian Algorithm to find the optimal assignment
+    auto assignment = Utility::Algorithm::hungarian_algorithm<double>(cost_matrix);
+
+    // Create the result as pairs of (current_marker index, prev_marker index)
+    std::vector<IndexPair> result;
+    double total_cost = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        result.emplace_back(i, assignment[i]);
+        total_cost += cost_matrix[i][assignment[i]]; // Sum the cost for each assignment
+    }
+    std::cout << "Total cost: " << total_cost << std::endl;
+
+    return result;
+}
+
+
 void Communicator::get_frame() {
   if (!vicon_client.IsConnected().Connected) {
-    cout << "Not connected to server" << endl;
+      std::cout << "Not connected to server" << std::endl;
     // wait 1 sec to try next
     sleep(1);
     return;
   }
+  if (!flag_initialized){
+    // std::vector<std::size_t> marker_count_total;
+    Utility::DataStructure::FixedQueue<std::size_t, 120> marker_count_total;
+
+    // Get first frame information
+    std::size_t frame_number;
+    for (std::size_t i = 0; i < 120; i++){ // TODO: make 120 to be a parameter
+      vicon_client.GetFrame();
+      frame_number = vicon_client.GetFrameNumber().FrameNumber;
+      marker_count = vicon_client.GetUnlabeledMarkerCount().MarkerCount;
+      marker_count_total.emplace_back(marker_count);
+    }
+    marker_count = Utility::Algorithm::find_majority_element(marker_count_total);
+    if (marker_count == 0){
+      std::cout << "Warning: Unlabeled Markers not found" << '\n';
+      return; // Initialization failed
+    }
+
+    previous_markers = MarkersStruct(marker_count, frame_number);
+    Communicator::previous_frame_time = Communicator::fetch_markers(previous_markers);
+
+    std::cout << "Initial marker counts: " << marker_count << std::endl;
+    flag_initialized = true;
+  }
 
   vicon_client.GetFrame();
   Output_GetFrameNumber frame_number = vicon_client.GetFrameNumber();
-  std::size_t marker_count = vicon_client.GetUnlabeledMarkerCount().MarkerCount;
+  std::cout << "If success get frame, return 2:"<<frame_number.Result << " framenumber:" <<  frame_number.FrameNumber << std::endl;
+  // std::cout << "Current frame time: " << current_frame_time << " ms" << std::endl;
+
+  // std::size_t marker_count_now = vicon_client.GetUnlabeledMarkerCount().MarkerCount; //data.positions[1].size(),we have 6 unlabeled markers;
+  // Output_GetUnlabeledMarkerCount unlabeled_marker_count = vicon_client.GetUnlabeledMarkerCount();
+  // std::size_t marker_count = unlabeled_marker_count.MarkerCount;
+  // if (unlabeled_marker_count.Result != Result::Success or unlabeled_marker_count.MarkerCount == 0){
+  //   std::cout << "Warning: Unlabeled Markers not found" << unlabeled_marker_count.Result << '\n';
+  //   std::cout << "  " << unlabeled_marker_count.MarkerCount << std::endl;
+  //   return;
+  // }
 
   MarkersStruct current_markers(marker_count, frame_number.FrameNumber);
-  for (std::size_t i = 0; i < marker_count; i++) {
-    auto translation =
-        vicon_client.GetUnlabeledMarkerGlobalTranslation(i).Translation;
-    current_markers.x[i] = translation[0];
-    current_markers.y[i] = translation[1];
-    current_markers.z[i] = translation[2];
-    current_markers.indices[i] = i;
+  double current_frame_time = Communicator::fetch_markers(current_markers);
+
+  // Compute Velocity
+  double delta_time = (current_frame_time - Communicator::previous_frame_time) / 1000.0; // convert to seconds
+  std::cout << "Delta time: " << delta_time << " ms" << std::endl;
+
+  auto assignment = find_optimal_assignment(current_markers, Communicator::previous_markers);
+  
+  for (const auto& [current_idx, prev_idx] : assignment) {
+    current_markers.vx[current_idx] = (current_markers.x[current_idx] - Communicator::previous_markers.x[prev_idx])/delta_time;
+    current_markers.vy[current_idx] = (current_markers.y[current_idx] - Communicator::previous_markers.y[prev_idx])/delta_time;
+    current_markers.vz[current_idx] = (current_markers.z[current_idx] - Communicator::previous_markers.z[prev_idx])/delta_time;
   }
 
+  // Pass step
+  Communicator::previous_markers = current_markers;
+  Communicator::previous_frame_time = current_frame_time;
+
   // send position to publisher
-  map<string, Publisher>::iterator pub_it;
+  std::map<std::string, Publisher>::iterator pub_it;
   boost::mutex::scoped_try_lock lock(mutex);
-  const string subject_name = "unlabeled_markers";
-  const string segment_name = "positions";
+  const std::string subject_name = "unlabeled_markers";
+  const std::string segment_name = "positions_velocity";
 
   if (lock.owns_lock()) {
     // get publisher
@@ -113,20 +220,20 @@ void Communicator::get_frame() {
   }
 }
 
-void Communicator::create_publisher(const string subject_name,
-                                    const string segment_name) {
+void Communicator::create_publisher(const std::string subject_name,
+                                    const std::string segment_name) {
   boost::thread(&Communicator::create_publisher_thread, this, subject_name,
                 segment_name);
 }
 
-void Communicator::create_publisher_thread(const string subject_name,
-                                           const string segment_name) {
+void Communicator::create_publisher_thread(const std::string subject_name,
+                                           const std::string segment_name) {
   std::string topic_name = ns_name + "/" + subject_name + "/" + segment_name;
   std::string key = subject_name + "/" + segment_name;
 
-  string msg = "Creating publisher for segment " + segment_name +
+  std::string msg = "Creating publisher for segment " + segment_name +
                " from subject " + subject_name;
-  cout << msg << endl;
+  std::cout << msg << std::endl;
 
   // create publisher
   boost::mutex::scoped_lock lock(mutex);

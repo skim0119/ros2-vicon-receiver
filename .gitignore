@@ -1,5 +1,12 @@
+.DS_Store
+*.swp
+.vscode/
+
+data/
 devel/
 logs/
+log/
+install/
 build/
 bin/
 lib/

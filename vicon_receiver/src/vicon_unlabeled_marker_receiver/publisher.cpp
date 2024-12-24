@@ -14,6 +14,12 @@ void Publisher::publish(MarkersStruct &p) {
   msg->x = std::move(p.x);
   msg->y = std::move(p.y);
   msg->z = std::move(p.z);
+
+  msg->vx = std::move(p.vx);
+  msg->vy = std::move(p.vy);
+  msg->vz = std::move(p.vz);
+  msg->speed = std::move(p.speed);
+  
   msg->indices = std::move(p.indices);
   msg->frame_number = p.frame_number;
   publisher_->publish(*msg);
